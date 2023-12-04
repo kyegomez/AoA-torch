@@ -59,7 +59,7 @@ class AoA(nn.Module):
         )
         
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         device = x.device
         # Linear projection from x -> k, v, q
         k, v, q = self.k_proj(x), self.v_proj(x), self.q_proj(x)
