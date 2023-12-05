@@ -1,3 +1,11 @@
+"""
+Attention on Attention Implementation
+This is a practice implementation after randomly finding it on Lucidrain's repo, I'm implementing the model architecture just for practice!
+
+Basically the architecture is: x => q, k, v -> multihead attn with residual q -> concat -> 2 linear projects ->sigmoid -> mult -> add -> norm -> ffn -> add -> norm with residual of first add and norm
+
+"""
+
 import torch
 from torch import nn
 from zeta.nn import FeedForward, Attend
@@ -57,7 +65,7 @@ class AoA(nn.Module):
         # Linear projection from x -> k, v, q
         k, v, q = self.k_proj(x), self.v_proj(x), self.q_proj(x)
 
-        # MultiHeadAttention
+        # # MultiHeadAttention
         attn = self.attn(q, k, v)[0]
         print(attn.shape)
         # Unfurl attn because it's a tuple
@@ -76,7 +84,7 @@ class AoA(nn.Module):
 
         # Mult sigmoided_concat_linear with projected_concat_for_mult
         mult_sigmoid_with_linear_concat = torch.matmul(
-            sigmoided_concat_linear, projected_concat_for_mult#.t()
+            sigmoided_concat_linear, projected_concat_for_mult.t()
         )
 
         # Verison 2 with @ which is the same as matmul
@@ -94,6 +102,8 @@ class AoA(nn.Module):
         out = self.norm(ffn_normed_mult_sigmoid) + normed_mult_sigmoid
 
         return out
+    
+
 
 
 x = torch.randn(1, 10, 512)
