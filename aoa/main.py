@@ -11,11 +11,22 @@ from torch import nn
 from zeta.nn import FeedForward, Attend
 
 
-def exists(val):
-    return val is not None
-
-
 class AoA(nn.Module):
+    """Attention on Attention
+    
+    Args:
+        dim (int): Input dimension
+        heads (int): Number of heads
+        dim_head (int): Dimension of each head
+        dropout (float): Dropout
+        ff_mult (int, optional): Feedforward multiplier. Defaults to 4.
+        depth (int, optional): Depth of the model. Defaults to 1.
+        
+    Methods:
+        forward(x: torch.Tensor) -> torch.Tensor:
+            Forward pass of the model
+        
+    """
     def __init__(
         self,
         dim: int,
@@ -23,7 +34,7 @@ class AoA(nn.Module):
         dim_head: int,
         dropout: float,
         ff_mult: int = 4,
-        depth: int = 1,
+        depth_aoa: int = 1,
     ):
         super().__init__()
 
@@ -32,6 +43,8 @@ class AoA(nn.Module):
         self.dim_head = dim_head
         self.dropout = dropout
         self.scale = dim_head**-0.5
+        self.ff_mult = ff_mult
+        self.depth_aoa = depth_aoa
         self.ff_mult = 4
 
         self.k_proj = nn.Linear(dim, dim)
@@ -48,8 +61,6 @@ class AoA(nn.Module):
             self.dropout,
         )
 
-        self.attn_1 = Attend(dropout=dropout, causal=False, heads=heads)
-
         # Sigmoid
         self.sigmoid = nn.Sigmoid()
 
@@ -59,54 +70,42 @@ class AoA(nn.Module):
             dim,
             4,
         )
+        
+        self.proj1 = nn.Linear(dim * 2, dim)
+        self.proj2 = nn.Linear(dim * 2, dim)
 
+    
     def forward(self, x: torch.Tensor):
-        device = x.device
         # Linear projection from x -> k, v, q
         k, v, q = self.k_proj(x), self.v_proj(x), self.q_proj(x)
 
-        # # MultiHeadAttention
-        attn = self.attn(q, k, v)[0]
-        print(attn.shape)
-        # Unfurl attn because it's a tuple
-        # attn = attn[0]
-        # attn = self.attn_1(q, k, v)
+        for _ in range(self.depth_aoa):
+            # MultiHeadAttention
+            attn_output, _ = self.attn(q, k, v)
+            
+            # Concatenation of attn_output and q
+            concat_v_with_q = torch.cat((attn_output, q), dim=-1)
 
-        concat_v_with_q = torch.concat((attn, q))
+            # Separate linear projections for the concatenated output
+            projected_for_sigmoid = self.proj1(concat_v_with_q)
+            projected_for_mult = self.proj2(concat_v_with_q)
 
-        # Proj concat_v_with_q
-        projected_concat_for_sigmoid, projected_concat_for_mult = self.proj(
-            concat_v_with_q
-        )
+            # Apply sigmoid and element-wise multiplication
+            sigmoid_output = self.sigmoid(projected_for_sigmoid)
+            mult_output = sigmoid_output * projected_for_mult
 
-        # Sigmoid projected_concat_for_sigmoid
-        sigmoided_concat_linear = self.sigmoid(projected_concat_for_sigmoid)
+        # Apply residual connection and normalization
+        q = self.norm(mult_output + x)
 
-        # Mult sigmoided_concat_linear with projected_concat_for_mult
-        mult_sigmoid_with_linear_concat = torch.matmul(
-            sigmoided_concat_linear, projected_concat_for_mult.t()
-        )
-
-        # Verison 2 with @ which is the same as matmul
-        # mult_sigmoid_with_linear_concat = (
-        #     sigmoided_concat_linear @ projected_concat_for_mult.t()
-        # )
-
-        # layernorm and add x
-        normed_mult_sigmoid = self.norm(mult_sigmoid_with_linear_concat) + x
-
-        # feedforward
-        ffn_normed_mult_sigmoid = self.ff(normed_mult_sigmoid)
-
-        # Add and norm
-        out = self.norm(ffn_normed_mult_sigmoid) + normed_mult_sigmoid
+        # Feedforward layer and final residual connection and normalization
+        out = self.ff(q)
+        out = self.norm(out + q)
 
         return out
+
     
 
-
-
 x = torch.randn(1, 10, 512)
-aoa = AoA(512, 8, 64, 0.1)
-out = aoa(x)
+model = AoA(512, 8, 64, 0.1)
+out = model(x)
 print(out.shape)
