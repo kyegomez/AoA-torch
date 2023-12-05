@@ -76,6 +76,14 @@ class AoA(nn.Module):
 
     
     def forward(self, x: torch.Tensor):
+        """Forward pass of the model
+
+        Args:
+            x (torch.Tensor): _description_
+
+        Returns:
+            _type_: _description_
+        """
         # Linear projection from x -> k, v, q
         k, v, q = self.k_proj(x), self.v_proj(x), self.q_proj(x)
 
@@ -103,9 +111,3 @@ class AoA(nn.Module):
 
         return out
 
-    
-
-x = torch.randn(1, 10, 512)
-model = AoA(512, 8, 64, 0.1)
-out = model(x)
-print(out.shape)
