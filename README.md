@@ -12,7 +12,10 @@ x => q, k, v -> multihead attn with residual q -> concat -> 2 linear projects
 # Install
 `pip3 install `
 
+
 ## Usage
+
+### `AoA` Module
 ```python
 
 import torch
@@ -26,6 +29,23 @@ print(out.shape)
 
 
 ```
+
+### `AoATransformer`
+```python
+import torch 
+from aoa.main import AoATransformer
+
+
+x = torch.randint(0, 100, (1, 10))
+model = AoATransformer(512, 1, 100)
+out = model(x)
+print(out.shape)
+
+
+```
+
+
+
 
 
 ## Citations
