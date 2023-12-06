@@ -10,7 +10,7 @@ x => q, k, v -> multihead attn with residual q -> concat -> 2 linear projects
 <img src="./saoa.png"></img>
 
 # Install
-`pip3 install `
+`pip3 install --upgrade aoa-torch `
 
 
 ## Usage

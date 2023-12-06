@@ -1,4 +1,4 @@
-from aoa.main import AoA, AoATransformer
+from aoa_torch.main import AoA, AoATransformer
 
 __all__ = [
     "AoA",

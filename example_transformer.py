@@ -1,5 +1,5 @@
 import torch 
-from aoa.main import AoATransformer
+from aoa_torch.main import AoATransformer
 
 
 x = torch.randint(0, 100, (1, 10))
